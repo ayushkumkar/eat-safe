@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "121509021108",
+    "project_id": "eatsafe-d935a",
+    "storage_bucket": "eatsafe-d935a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:121509021108:android:d0cc619a7a81374499dee1",
+        "android_client_info": {
+          "package_name": "com.example.eat_safe"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD1yx1iU8B-yxqRZ7S5-BMPWqSFnnF4Zf8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
