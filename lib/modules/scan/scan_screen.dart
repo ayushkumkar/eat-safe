@@ -6,7 +6,7 @@ import 'scan_controller.dart';
 class ScanScreen extends StatelessWidget {
   const ScanScreen({super.key});
 
-  @override
+  @ override
   Widget build(BuildContext context) {
     final ScanController controller = Get.put(ScanController());
 
