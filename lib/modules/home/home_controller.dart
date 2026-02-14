@@ -1,78 +1,72 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../app/routes/app_routes.dart';
 import '../../data/models/user_model.dart';
 import '../../data/models/product_model.dart';
 
 class HomeController extends GetxController {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   final isLoading = true.obs;
   final userName = ''.obs;
   final recentScans = <ProductModel>[].obs;
+  final totalScans = 0.obs;
+  final fakeDetected = 0.obs;
+  final avgScore = 0.0.obs;
 
   @override
   void onInit() {
     super.onInit();
     loadUserData();
-    loadRecentScans();
   }
 
   Future<void> loadUserData() async {
     try {
-      final uid = _auth.currentUser?.uid;
-      if (uid == null) return;
-
-      final doc = await _firestore.collection('users').doc(uid).get();
-      if (doc.exists) {
-        final user = UserModel.fromMap(doc.data()!);
-        userName.value = user.name.split(' ').first; // First name only
-      }
-    } catch (e) {
-      userName.value = 'User';
-    }
-  }
-
-  Future<void> loadRecentScans() async {
-    try {
       isLoading.value = true;
-      final uid = _auth.currentUser?.uid;
+      final prefs = await SharedPreferences.getInstance();
+      final uid = prefs.getString('uid');
       if (uid == null) return;
 
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(uid)
+      // Load user info
+      final userDoc =
+          await _firestore.collection('users').doc(uid).get();
+      if (userDoc.exists) {
+        final user = UserModel.fromMap(userDoc.data()!);
+        userName.value = user.name.split(' ').first;
+      }
+
+      // Load recent scans
+      final scansQuery = await _firestore
           .collection('scans')
+          .where('uid', isEqualTo: uid)
           .orderBy('scannedAt', descending: true)
           .limit(5)
           .get();
 
-      recentScans.value = snapshot.docs
+      final scans = scansQuery.docs
           .map((doc) => ProductModel.fromMap(doc.data()))
           .toList();
+
+      recentScans.value = scans;
+      totalScans.value = scans.length;
+
+      // Calculate stats
+      fakeDetected.value = scans
+          .where((s) => s.authenticityStatus == 'FAKE')
+          .length;
+
+      if (scans.isNotEmpty) {
+        avgScore.value = scans
+                .map((s) => s.nutritionScore)
+                .reduce((a, b) => a + b) /
+            scans.length;
+      }
     } catch (e) {
-      recentScans.value = [];
+      debugPrint('Error loading home data: $e');
     } finally {
       isLoading.value = false;
     }
-  }
-
-  Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('uid');
-    await _auth.signOut();
-    Get.offAllNamed(AppRoutes.login);
-  }
-
-  String getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
   }
 
   Color getScoreColor(double score) {
@@ -81,12 +75,22 @@ class HomeController extends GetxController {
     return const Color(0xFFE74C3C);
   }
 
-  String getStatusEmoji(String status) {
+  String getScoreLabel(double score) {
+    if (score >= 7) return 'Healthy';
+    if (score >= 4) return 'Moderate';
+    return 'Unhealthy';
+  }
+
+  String getStatusColor(String status) {
     switch (status) {
-      case 'AUTHENTIC': return '✅';
-      case 'SUSPICIOUS': return '⚠️';
-      case 'FAKE': return '❌';
-      default: return '❓';
+      case 'AUTHENTIC':
+        return '0xFF2ECC71';
+      case 'SUSPICIOUS':
+        return '0xFFF39C12';
+      case 'FAKE':
+        return '0xFFE74C3C';
+      default:
+        return '0xFF7F8C8D';
     }
   }
 }
