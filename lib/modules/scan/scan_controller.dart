@@ -4,16 +4,21 @@ import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../app/routes/app_routes.dart';
+import '../../data/services/api_service.dart';
 
 class ScanController extends GetxController {
   final ImagePicker _picker = ImagePicker();
+  final ApiService _apiService = ApiService();
   final isLoading = false.obs;
-  final selectedImage = Rxn<File>();
 
-  Future<void> requestPermissions() async {
-    await Permission.camera.request();
-    await Permission.storage.request();
-  }
+  // TWO separate images now
+  final frontImage = Rxn<File>();
+  final backImage = Rxn<File>();
+
+  // Track which side is ready
+  bool get isFrontReady => frontImage.value != null;
+  bool get isBackReady => backImage.value != null;
+  bool get canAnalyze => isFrontReady && isBackReady;
 
   @override
   void onInit() {
@@ -21,93 +26,108 @@ class ScanController extends GetxController {
     requestPermissions();
   }
 
-  // Pick from Camera
-  Future<void> scanWithCamera() async {
+  Future<void> requestPermissions() async {
+    await Permission.camera.request();
+    await Permission.storage.request();
+  }
+
+  // Pick front image
+  Future<void> pickFrontImage(ImageSource source) async {
+    final file = await _pickImage(source);
+    if (file != null) frontImage.value = file;
+  }
+
+  // Pick back image
+  Future<void> pickBackImage(ImageSource source) async {
+    final file = await _pickImage(source);
+    if (file != null) backImage.value = file;
+  }
+
+  Future<File?> _pickImage(ImageSource source) async {
     try {
-      final status = await Permission.camera.status;
-      if (status.isDenied) {
-        await Permission.camera.request();
+      if (source == ImageSource.camera) {
+        final status = await Permission.camera.status;
+        if (status.isDenied) await Permission.camera.request();
       }
 
       final XFile? photo = await _picker.pickImage(
-        source: ImageSource.camera,
+        source: source,
         imageQuality: 85,
         maxWidth: 1200,
         maxHeight: 1200,
       );
 
-      if (photo != null) {
-        selectedImage.value = File(photo.path);
-        _processImage();
-      }
+      if (photo != null) return File(photo.path);
+      return null;
     } catch (e) {
       Get.snackbar(
-        'Camera Error',
-        'Could not open camera. Please try again.',
+        'Error',
+        'Could not get image. Please try again.',
         backgroundColor: const Color(0xFFE74C3C),
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,
       );
+      return null;
     }
   }
 
-  // Pick from Gallery
-  Future<void> scanFromGallery() async {
-    try {
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 85,
-        maxWidth: 1200,
-        maxHeight: 1200,
-      );
-
-      if (image != null) {
-        selectedImage.value = File(image.path);
-        _processImage();
-      }
-    } catch (e) {
+  // Analyze both images
+  Future<void> analyzeProduct() async {
+    if (!canAnalyze) {
       Get.snackbar(
-        'Gallery Error',
-        'Could not open gallery. Please try again.',
-        backgroundColor: const Color(0xFFE74C3C),
+        'Missing Images',
+        'Please add both front and back photos',
+        backgroundColor: const Color(0xFFF39C12),
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,
       );
+      return;
     }
-  }
 
-  // Process the image and navigate to result
-  Future<void> _processImage() async {
     try {
       isLoading.value = true;
 
-      // Show processing dialog
       Get.dialog(
+        // ignore: deprecated_member_use
         WillPopScope(
           onWillPop: () async => false,
-          child: const Center(
-            child: _ProcessingDialog(),
-          ),
+          child: const Center(child: _ProcessingDialog()),
         ),
         barrierDismissible: false,
       );
 
-      // Simulate processing delay (replace with real API call later)
-      await Future.delayed(const Duration(seconds: 3));
+      // Send BOTH images to backend
+      // Front → brand/logo detection
+      // Back → FSSAI + nutrition extraction
+      final result = await _apiService.scanProduct(
+        frontImage: frontImage.value!,
+        backImage: backImage.value!,
+      );
 
-      // Close dialog
       Get.back();
 
-      // Navigate to result screen with image path
-      Get.toNamed(
-        AppRoutes.result,
-        arguments: {'imagePath': selectedImage.value!.path},
-      );
+      if (result != null) {
+        Get.toNamed(
+          AppRoutes.result,
+          arguments: {
+            'imagePath': backImage.value!.path,
+            'apiResult': result,
+          },
+        );
+      } else {
+        Get.snackbar(
+          'Analysis Failed',
+          'Could not analyze the product. Please try again.',
+          backgroundColor: const Color(0xFFE74C3C),
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
     } catch (e) {
       Get.back();
       Get.snackbar(
-        'Processing Error',
-        'Could not process image. Please try again.',
+        'Error',
+        'Something went wrong. Please try again.',
         backgroundColor: const Color(0xFFE74C3C),
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,
@@ -116,9 +136,14 @@ class ScanController extends GetxController {
       isLoading.value = false;
     }
   }
+
+  void clearImages() {
+    frontImage.value = null;
+    backImage.value = null;
+  }
 }
 
-// Processing Dialog Widget
+// Keep the _ProcessingDialog class exactly as it was before
 class _ProcessingDialog extends StatefulWidget {
   const _ProcessingDialog();
 
@@ -147,8 +172,6 @@ class _ProcessingDialogState extends State<_ProcessingDialog>
       duration: const Duration(seconds: 1),
     )..repeat(reverse: true);
     _animation = Tween(begin: 0.6, end: 1.0).animate(_animController);
-
-    // Cycle through steps
     _cycleSteps();
   }
 
@@ -177,7 +200,6 @@ class _ProcessingDialogState extends State<_ProcessingDialog>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Animated Icon
           FadeTransition(
             opacity: _animation,
             child: Container(

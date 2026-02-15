@@ -16,10 +16,50 @@ class ResultController extends GetxController {
     super.onInit();
     final args = Get.arguments as Map<String, dynamic>?;
     imagePath = args?['imagePath'];
-    _loadMockResult();
+    final apiResult = args?['apiResult'] as Map<String, dynamic>?;
+
+    if (apiResult != null) {
+      _loadFromApiResult(apiResult);
+    } else {
+      _loadMockResult();
+    }
   }
 
-  // Mock result — will be replaced with real API in Phase 5
+  void _loadFromApiResult(Map<String, dynamic> data) {
+    try {
+      final nutrients = data['nutrients'] as Map<String, dynamic>? ?? {};
+
+      product.value = ProductModel(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        productName: data['productName'] ?? 'Unknown Product',
+        brand: data['brand'] ?? 'Unknown Brand',
+        fssaiNumber: data['fssaiNumber'] ?? 'Not Found',
+        imageUrl: imagePath ?? '',
+        nutritionScore: (data['nutritionScore'] as num?)?.toDouble() ?? 0.0,
+        nutrients: {
+          'calories': (nutrients['calories'] as num?)?.toDouble() ?? 0.0,
+          'protein': (nutrients['protein'] as num?)?.toDouble() ?? 0.0,
+          'carbohydrates':
+              (nutrients['carbohydrates'] as num?)?.toDouble() ?? 0.0,
+          'sugar': (nutrients['sugar'] as num?)?.toDouble() ?? 0.0,
+          'fat': (nutrients['fat'] as num?)?.toDouble() ?? 0.0,
+          'saturatedFat':
+              (nutrients['saturatedFat'] as num?)?.toDouble() ?? 0.0,
+          'sodium': (nutrients['sodium'] as num?)?.toDouble() ?? 0.0,
+          'fiber': (nutrients['fiber'] as num?)?.toDouble() ?? 0.0,
+        },
+        authenticityStatus: data['authenticityStatus'] ?? 'SUSPICIOUS',
+        scannedAt: DateTime.now(),
+      );
+
+      isLoading.value = false;
+      _saveToFirestore();
+    } catch (e) {
+      debugPrint('Error loading API result: $e');
+      _loadMockResult();
+    }
+  }
+
   Future<void> _loadMockResult() async {
     await Future.delayed(const Duration(milliseconds: 500));
 
@@ -31,13 +71,13 @@ class ResultController extends GetxController {
       imageUrl: '',
       nutritionScore: 4.2,
       nutrients: {
-        'calories': 350,
+        'calories': 350.0,
         'protein': 8.5,
         'carbohydrates': 52.0,
         'sugar': 2.1,
         'fat': 12.0,
         'saturatedFat': 5.5,
-        'sodium': 890,
+        'sodium': 890.0,
         'fiber': 2.0,
       },
       authenticityStatus: 'AUTHENTIC',
@@ -104,7 +144,6 @@ class ResultController extends GetxController {
     }
   }
 
-  // Nutrient warning levels
   String getNutrientLevel(String nutrient, double value) {
     switch (nutrient) {
       case 'sugar':
