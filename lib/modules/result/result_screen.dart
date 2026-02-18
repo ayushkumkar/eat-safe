@@ -76,9 +76,21 @@ class ResultScreen extends StatelessWidget {
 
               const SizedBox(height: 16),
 
+              // ── Ingredient Analysis ──
+              Obx(() {
+                if (controller.ingredientAnalysis.value != null) {
+                  return Column(
+                    children: [
+                      _buildIngredientAnalysis(controller),
+                      const SizedBox(height: 16),
+                    ],
+                  );
+                }
+                return const SizedBox();
+              }),
+
               // ── Alternatives Button ──
-              if (product.nutritionScore < 5)
-                _buildAlternativesButton(),
+              if (product.nutritionScore < 5) _buildAlternativesButton(),
 
               const SizedBox(height: 24),
 
@@ -137,50 +149,50 @@ class ResultScreen extends StatelessWidget {
         children: [
           // Status Banner
           Container(
-  width: double.infinity,
-  padding: const EdgeInsets.all(16),
-  decoration: BoxDecoration(
-    color: authColor.withOpacity(0.1),
-    borderRadius: BorderRadius.circular(14),
-    border: Border.all(color: authColor.withOpacity(0.3)),
-  ),
-  child: Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Icon(authIcon, color: authColor, size: 32),
-      const SizedBox(width: 14),
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              product.authenticityStatus,
-              style: TextStyle(
-                color: authColor,
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-              ),
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: authColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: authColor.withOpacity(0.3)),
             ),
-            const SizedBox(height: 4),
-            Text(
-              product.authenticityStatus == 'AUTHENTIC'
-                  ? 'This product appears to be genuine'
-                  : product.authenticityStatus == 'SUSPICIOUS'
-                      ? 'Some details could not be verified'
-                      : 'This product may be counterfeit!',
-              style: TextStyle(
-                color: authColor.withOpacity(0.8),
-                fontSize: 13,
-                height: 1.4,
-              ),
-              softWrap: true,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(authIcon, color: authColor, size: 32),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        product.authenticityStatus,
+                        style: TextStyle(
+                          color: authColor,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        product.authenticityStatus == 'AUTHENTIC'
+                            ? 'This product appears to be genuine'
+                            : product.authenticityStatus == 'SUSPICIOUS'
+                                ? 'Some details could not be verified'
+                                : 'This product may be counterfeit!',
+                        style: TextStyle(
+                          color: authColor.withOpacity(0.8),
+                          fontSize: 13,
+                          height: 1.4,
+                        ),
+                        softWrap: true,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
-    ],
-  ),
-),
+          ),
 
           const SizedBox(height: 16),
 
@@ -259,9 +271,7 @@ class ResultScreen extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Icon(
-                isValid
-                    ? Icons.check_circle_rounded
-                    : Icons.cancel_rounded,
+                isValid ? Icons.check_circle_rounded : Icons.cancel_rounded,
                 color: isValid
                     ? const Color(0xFF2ECC71)
                     : const Color(0xFFE74C3C),
@@ -343,8 +353,8 @@ class ResultScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 5),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                   decoration: BoxDecoration(
                     color: scoreColor.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(8),
@@ -437,12 +447,11 @@ class ResultScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           ...displayNutrients.map((n) {
-            final value =
-                (nutrients[n['key']] as num?)?.toDouble() ?? 0.0;
+            final value = (nutrients[n['key']] as num?)?.toDouble() ?? 0.0;
             final max = n['max'] as double;
             final progress = (value / max).clamp(0.0, 1.0);
-            final level = controller.getNutrientLevel(
-                n['key'] as String, value);
+            final level =
+                controller.getNutrientLevel(n['key'] as String, value);
             final color = controller.getNutrientColor(level);
 
             return Padding(
@@ -522,8 +531,7 @@ class ResultScreen extends StatelessWidget {
     final sodium = (nutrients['sodium'] as num?)?.toDouble() ?? 0;
     final sugar = (nutrients['sugar'] as num?)?.toDouble() ?? 0;
     final fat = (nutrients['fat'] as num?)?.toDouble() ?? 0;
-    final saturatedFat =
-        (nutrients['saturatedFat'] as num?)?.toDouble() ?? 0;
+    final saturatedFat = (nutrients['saturatedFat'] as num?)?.toDouble() ?? 0;
 
     if (sodium > 600) {
       warnings.add({
@@ -565,8 +573,8 @@ class ResultScreen extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFF2ECC71).withOpacity(0.08),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-              color: const Color(0xFF2ECC71).withOpacity(0.3)),
+          border:
+              Border.all(color: const Color(0xFF2ECC71).withOpacity(0.3)),
         ),
         child: const Row(
           children: [
@@ -659,6 +667,234 @@ class ResultScreen extends StatelessWidget {
     );
   }
 
+  // ── Ingredient Analysis Widget ──
+  Widget _buildIngredientAnalysis(ResultController controller) {
+    final analysis = controller.ingredientAnalysis.value!;
+    final harmfulList = analysis['harmful_ingredients'] as List<dynamic>? ?? [];
+    final warnings = analysis['warnings'] as List<dynamic>? ?? [];
+    final safetyRating = analysis['safety_rating'] ?? 'safe';
+
+    Color ratingColor;
+    IconData ratingIcon;
+    String ratingText;
+
+    switch (safetyRating) {
+      case 'unsafe':
+        ratingColor = const Color(0xFFE74C3C);
+        ratingIcon = Icons.dangerous_rounded;
+        ratingText = 'Unsafe Ingredients';
+        break;
+      case 'moderate':
+        ratingColor = const Color(0xFFF39C12);
+        ratingIcon = Icons.warning_amber_rounded;
+        ratingText = 'Moderate Risk';
+        break;
+      default:
+        ratingColor = const Color(0xFF2ECC71);
+        ratingIcon = Icons.check_circle_rounded;
+        ratingText = 'Safe Ingredients';
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: ratingColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(ratingIcon, color: ratingColor, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Ingredient Analysis',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF2C3E50),
+                      ),
+                    ),
+                    Text(
+                      ratingText,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: ratingColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          if (harmfulList.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            const Divider(color: Color(0xFFF0F0F0)),
+            const SizedBox(height: 12),
+            const Text(
+              'Harmful Ingredients Found:',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF2C3E50),
+              ),
+            ),
+            const SizedBox(height: 10),
+            ...harmfulList.map((item) {
+              final ingredient = item as Map<String, dynamic>;
+              final severity = ingredient['severity'] ?? 'low';
+              Color severityColor;
+              switch (severity) {
+                case 'high':
+                  severityColor = const Color(0xFFE74C3C);
+                  break;
+                case 'medium':
+                  severityColor = const Color(0xFFF39C12);
+                  break;
+                default:
+                  severityColor = const Color(0xFF95A5A6);
+              }
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: severityColor.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: severityColor.withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.only(top: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: severityColor.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        severity.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color: severityColor,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            ingredient['ingredient'] ?? '',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF2C3E50),
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            ingredient['reason'] ?? '',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF7F8C8D),
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ],
+
+          if (warnings.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            ...warnings.map((warning) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.info_outline,
+                        size: 16,
+                        color: Color(0xFFF39C12),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          warning.toString(),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF7F8C8D),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+          ],
+
+          if (harmfulList.isEmpty && warnings.isEmpty) ...[
+            const SizedBox(height: 12),
+            const Row(
+              children: [
+                Icon(
+                  Icons.verified_rounded,
+                  color: Color(0xFF2ECC71),
+                  size: 18,
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'No harmful ingredients detected',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF27AE60),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   // ── Alternatives Button ──
   Widget _buildAlternativesButton() {
     return Padding(
@@ -677,8 +913,7 @@ class ResultScreen extends StatelessWidget {
           child: const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.swap_horiz_rounded,
-                  color: Colors.white, size: 22),
+              Icon(Icons.swap_horiz_rounded, color: Colors.white, size: 22),
               SizedBox(width: 10),
               Text(
                 'See Healthier Alternatives',

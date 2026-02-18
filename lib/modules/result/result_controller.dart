@@ -4,9 +4,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/models/product_model.dart';
 
+
+
 class ResultController extends GetxController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
+  final ingredientAnalysis = Rxn<Map<String, dynamic>>();
   final isLoading = true.obs;
   final product = Rxn<ProductModel>();
   String? imagePath;
@@ -51,6 +53,9 @@ class ResultController extends GetxController {
         authenticityStatus: data['authenticityStatus'] ?? 'SUSPICIOUS',
         scannedAt: DateTime.now(),
       );
+
+      // Store ingredient analysis separately
+      ingredientAnalysis.value = data['ingredientAnalysis'];
 
       isLoading.value = false;
       _saveToFirestore();
@@ -97,10 +102,7 @@ class ResultController extends GetxController {
       final data = product.value!.toMap();
       data['uid'] = uid;
 
-      await _firestore
-          .collection('scans')
-          .doc(product.value!.id)
-          .set(data);
+      await _firestore.collection('scans').doc(product.value!.id).set(data);
     } catch (e) {
       debugPrint('Error saving scan: $e');
     }

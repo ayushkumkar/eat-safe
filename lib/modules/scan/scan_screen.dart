@@ -35,7 +35,7 @@ class ScanScreen extends StatelessWidget {
           TextButton(
             onPressed: controller.clearImages,
             child: const Text(
-              'Clear',
+              'Clear All',
               style: TextStyle(
                 color: Color(0xFFE74C3C),
                 fontWeight: FontWeight.w600,
@@ -49,32 +49,27 @@ class ScanScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Info Banner ──
+            // Info Banner
             Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: const Color(0xFF2ECC71).withOpacity(0.08),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: const Color(0xFF2ECC71).withOpacity(0.3),
                 ),
               ),
               child: const Row(
                 children: [
-                  Icon(
-                    Icons.info_outline_rounded,
-                    color: Color(0xFF2ECC71),
-                    size: 20,
-                  ),
+                  Icon(Icons.info_outline, color: Color(0xFF2ECC71), size: 18),
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Take 2 photos — front for logo/brand, back for FSSAI & nutrition info',
+                      'Take 4 separate photos for accurate analysis',
                       style: TextStyle(
                         color: Color(0xFF27AE60),
-                        fontSize: 13,
-                        height: 1.5,
+                        fontSize: 12,
+                        height: 1.4,
                       ),
                     ),
                   ),
@@ -82,56 +77,76 @@ class ScanScreen extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 24),
-
-            // ── Step 1: Front Image ──
-            _buildImageSection(
-              controller: controller,
-              title: 'Step 1 — Front of Package',
-              subtitle: 'Shows brand name & logo',
-              icon: Icons.branding_watermark_rounded,
-              color: const Color(0xFF3498DB),
-              imageObs: controller.frontImage,
-              onCamera: () =>
-                  controller.pickFrontImage(ImageSource.camera),
-              onGallery: () =>
-                  controller.pickFrontImage(ImageSource.gallery),
-            ),
-
             const SizedBox(height: 20),
 
-            // ── Step 2: Back Image ──
-            _buildImageSection(
+            // Step 1 — Logo
+            _buildPhotoSection(
               controller: controller,
-              title: 'Step 2 — Back of Package',
-              subtitle: 'Shows FSSAI number & nutrition table',
-              icon: Icons.fact_check_rounded,
-              color: const Color(0xFF9B59B6),
-              imageObs: controller.backImage,
-              onCamera: () =>
-                  controller.pickBackImage(ImageSource.camera),
-              onGallery: () =>
-                  controller.pickBackImage(ImageSource.gallery),
+              step: '1',
+              type: 'logo',
+              title: 'Brand Logo & Name',
+              subtitle: 'Front package with brand logo',
+              icon: Icons.branding_watermark_rounded,
+              color: const Color(0xFF3498DB),
+              imageObs: controller.logoImage,
             ),
 
-            const SizedBox(height: 28),
+            const SizedBox(height: 14),
 
-            // ── Analyze Button ──
+            // Step 2 — FSSAI
+            _buildPhotoSection(
+              controller: controller,
+              step: '2',
+              type: 'fssai',
+              title: 'FSSAI License Number',
+              subtitle: 'Photo showing FSSAI code clearly',
+              icon: Icons.verified_rounded,
+              color: const Color(0xFF9B59B6),
+              imageObs: controller.fssaiImage,
+            ),
+
+            const SizedBox(height: 14),
+
+            // Step 3 — Nutrition
+            _buildPhotoSection(
+              controller: controller,
+              step: '3',
+              type: 'nutrition',
+              title: 'Nutrition Facts Table',
+              subtitle: 'Calories, protein, fat, sodium, etc.',
+              icon: Icons.article_rounded,
+              color: const Color(0xFFF39C12),
+              imageObs: controller.nutritionImage,
+            ),
+
+            const SizedBox(height: 14),
+
+            // Step 4 — Ingredients
+            _buildPhotoSection(
+              controller: controller,
+              step: '4',
+              type: 'ingredients',
+              title: 'Ingredient List',
+              subtitle: 'All ingredients & preservatives',
+              icon: Icons.list_alt_rounded,
+              color: const Color(0xFFE74C3C),
+              imageObs: controller.ingredientsImage,
+            ),
+
+            const SizedBox(height: 24),
+
+            // Analyze Button
             Obx(() => GestureDetector(
                   onTap: controller.canAnalyze
                       ? controller.analyzeProduct
                       : null,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 300),
-                    width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     decoration: BoxDecoration(
                       gradient: controller.canAnalyze
                           ? const LinearGradient(
-                              colors: [
-                                Color(0xFF2ECC71),
-                                Color(0xFF27AE60)
-                              ],
+                              colors: [Color(0xFF2ECC71), Color(0xFF27AE60)],
                             )
                           : null,
                       color: controller.canAnalyze
@@ -153,7 +168,7 @@ class ScanScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.document_scanner_rounded,
+                          Icons.analytics_rounded,
                           color: controller.canAnalyze
                               ? Colors.white
                               : const Color(0xFFB2BEC3),
@@ -163,7 +178,7 @@ class ScanScreen extends StatelessWidget {
                         Text(
                           controller.canAnalyze
                               ? 'Analyze Product'
-                              : 'Add both photos to analyze',
+                              : 'Add all 4 photos',
                           style: TextStyle(
                             color: controller.canAnalyze
                                 ? Colors.white
@@ -177,10 +192,10 @@ class ScanScreen extends StatelessWidget {
                   ),
                 )),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
-            // ── Progress Indicator ──
-            Obx(() => _buildProgressRow(controller)),
+            // Progress Indicator
+            Obx(() => _buildProgress(controller)),
 
             const SizedBox(height: 32),
           ],
@@ -189,46 +204,53 @@ class ScanScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildImageSection({
+  Widget _buildPhotoSection({
     required ScanController controller,
+    required String step,
+    required String type,
     required String title,
     required String subtitle,
     required IconData icon,
     required Color color,
     required Rxn<File> imageObs,
-    required VoidCallback onCamera,
-    required VoidCallback onGallery,
   }) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Title Row
+          // Header
           Row(
             children: [
               Container(
-                width: 38,
-                height: 38,
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
                   color: color.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(10),
+                  shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: color, size: 20),
+                child: Center(
+                  child: Text(
+                    step,
+                    style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -236,7 +258,7 @@ class ScanScreen extends StatelessWidget {
                     Text(
                       title,
                       style: const TextStyle(
-                        fontSize: 15,
+                        fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: Color(0xFF2C3E50),
                       ),
@@ -244,116 +266,96 @@ class ScanScreen extends StatelessWidget {
                     Text(
                       subtitle,
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 11,
                         color: Color(0xFF7F8C8D),
                       ),
                     ),
                   ],
                 ),
               ),
-              // Checkmark if image is added
               Obx(() => imageObs.value != null
-                  ? const Icon(
-                      Icons.check_circle_rounded,
-                      color: Color(0xFF2ECC71),
-                      size: 24,
-                    )
+                  ? const Icon(Icons.check_circle, color: Color(0xFF2ECC71), size: 20)
                   : const SizedBox()),
             ],
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
-          // Image Preview or Placeholder
+          // Image Preview
           Obx(() => imageObs.value != null
               ? Stack(
                   children: [
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(10),
                       child: Image.file(
                         imageObs.value!,
                         width: double.infinity,
-                        height: 180,
+                        height: 140,
                         fit: BoxFit.cover,
                       ),
                     ),
                     Positioned(
-                      top: 8,
-                      right: 8,
+                      top: 6,
+                      right: 6,
                       child: GestureDetector(
-                        onTap: onCamera,
+                        onTap: () => controller.pickImage(type, ImageSource.camera),
                         child: Container(
-                          padding: const EdgeInsets.all(6),
+                          padding: const EdgeInsets.all(5),
                           decoration: BoxDecoration(
                             color: Colors.black.withOpacity(0.6),
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(6),
                           ),
-                          child: const Icon(
-                            Icons.refresh_rounded,
-                            color: Colors.white,
-                            size: 18,
-                          ),
+                          child: const Icon(Icons.refresh, color: Colors.white, size: 16),
                         ),
                       ),
                     ),
                   ],
                 )
               : Container(
-                  width: double.infinity,
-                  height: 120,
+                  height: 100,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8F9FA),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: const Color(0xFFE0E0E0),
-                    ),
+                    color: color.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: color.withOpacity(0.2)),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        Icons.add_photo_alternate_outlined,
-                        size: 36,
-                        color: Colors.grey.shade400,
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'No photo added yet',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFFB2BEC3),
-                        ),
+                      Icon(icon, size: 28, color: color.withOpacity(0.5)),
+                      const SizedBox(height: 6),
+                      Text(
+                        'No photo yet',
+                        style: TextStyle(fontSize: 11, color: color.withOpacity(0.7)),
                       ),
                     ],
                   ),
                 )),
 
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
 
-          // Camera + Gallery Buttons
+          // Buttons
           Row(
             children: [
               Expanded(
                 child: GestureDetector(
-                  onTap: onCamera,
+                  onTap: () => controller.pickImage(type, ImageSource.camera),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                     decoration: BoxDecoration(
                       color: color.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.camera_alt_rounded,
-                            color: color, size: 18),
+                        Icon(Icons.camera_alt, color: color, size: 16),
                         const SizedBox(width: 6),
                         Text(
                           'Camera',
                           style: TextStyle(
                             color: color,
                             fontWeight: FontWeight.w600,
-                            fontSize: 13,
+                            fontSize: 12,
                           ),
                         ),
                       ],
@@ -361,29 +363,28 @@ class ScanScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: GestureDetector(
-                  onTap: onGallery,
+                  onTap: () => controller.pickImage(type, ImageSource.gallery),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8F9FA),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: const Color(0xFFE0E0E0)),
                     ),
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.photo_library_rounded,
-                            color: Color(0xFF7F8C8D), size: 18),
+                        Icon(Icons.photo_library, color: Color(0xFF7F8C8D), size: 16),
                         SizedBox(width: 6),
                         Text(
                           'Gallery',
                           style: TextStyle(
                             color: Color(0xFF7F8C8D),
                             fontWeight: FontWeight.w600,
-                            fontSize: 13,
+                            fontSize: 12,
                           ),
                         ),
                       ],
@@ -398,90 +399,41 @@ class ScanScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildProgressRow(ScanController controller) {
+  Widget _buildProgress(ScanController controller) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _buildProgressStep(
-          number: '1',
-          label: 'Front Photo',
-          isDone: controller.isFrontReady,
-          isActive: !controller.isFrontReady,
-        ),
-        Expanded(
-          child: Container(
-            height: 2,
-            color: controller.isFrontReady
-                ? const Color(0xFF2ECC71)
-                : const Color(0xFFE0E0E0),
-          ),
-        ),
-        _buildProgressStep(
-          number: '2',
-          label: 'Back Photo',
-          isDone: controller.isBackReady,
-          isActive: controller.isFrontReady && !controller.isBackReady,
-        ),
-        Expanded(
-          child: Container(
-            height: 2,
-            color: controller.isBackReady
-                ? const Color(0xFF2ECC71)
-                : const Color(0xFFE0E0E0),
-          ),
-        ),
-        _buildProgressStep(
-          number: '3',
-          label: 'Analyze',
-          isDone: false,
-          isActive: controller.canAnalyze,
-        ),
+        _buildProgressDot('1', controller.isLogoReady),
+        const Expanded(child: Divider()),
+        _buildProgressDot('2', controller.isFssaiReady),
+        const Expanded(child: Divider()),
+        _buildProgressDot('3', controller.isNutritionReady),
+        const Expanded(child: Divider()),
+        _buildProgressDot('4', controller.isIngredientsReady),
       ],
     );
   }
 
-  Widget _buildProgressStep({
-    required String number,
-    required String label,
-    required bool isDone,
-    required bool isActive,
-  }) {
-    return Column(
-      children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: isDone
-                ? const Color(0xFF2ECC71)
-                : isActive
-                    ? const Color(0xFF2ECC71).withOpacity(0.2)
-                    : const Color(0xFFE0E0E0),
-            shape: BoxShape.circle,
-          ),
-          child: Center(
-            child: isDone
-                ? const Icon(Icons.check, color: Colors.white, size: 16)
-                : Text(
-                    number,
-                    style: TextStyle(
-                      color: isActive
-                          ? const Color(0xFF2ECC71)
-                          : const Color(0xFF7F8C8D),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                    ),
-                  ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 10,
-            color: Color(0xFF7F8C8D),
-          ),
-        ),
-      ],
+  Widget _buildProgressDot(String num, bool done) {
+    return Container(
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
+        color: done ? const Color(0xFF2ECC71) : const Color(0xFFE0E0E0),
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: done
+            ? const Icon(Icons.check, color: Colors.white, size: 14)
+            : Text(
+                num,
+                style: const TextStyle(
+                  color: Color(0xFF7F8C8D),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
+              ),
+      ),
     );
   }
 }

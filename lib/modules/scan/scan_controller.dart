@@ -11,14 +11,17 @@ class ScanController extends GetxController {
   final ApiService _apiService = ApiService();
   final isLoading = false.obs;
 
-  // TWO separate images now
-  final frontImage = Rxn<File>();
-  final backImage = Rxn<File>();
+  // FOUR images now
+  final logoImage = Rxn<File>();
+  final fssaiImage = Rxn<File>();
+  final nutritionImage = Rxn<File>();
+  final ingredientsImage = Rxn<File>();
 
-  // Track which side is ready
-  bool get isFrontReady => frontImage.value != null;
-  bool get isBackReady => backImage.value != null;
-  bool get canAnalyze => isFrontReady && isBackReady;
+  bool get isLogoReady => logoImage.value != null;
+  bool get isFssaiReady => fssaiImage.value != null;
+  bool get isNutritionReady => nutritionImage.value != null;
+  bool get isIngredientsReady => ingredientsImage.value != null;
+  bool get canAnalyze => isLogoReady && isFssaiReady && isNutritionReady && isIngredientsReady;
 
   @override
   void onInit() {
@@ -31,16 +34,24 @@ class ScanController extends GetxController {
     await Permission.storage.request();
   }
 
-  // Pick front image
-  Future<void> pickFrontImage(ImageSource source) async {
+  Future<void> pickImage(String type, ImageSource source) async {
     final file = await _pickImage(source);
-    if (file != null) frontImage.value = file;
-  }
-
-  // Pick back image
-  Future<void> pickBackImage(ImageSource source) async {
-    final file = await _pickImage(source);
-    if (file != null) backImage.value = file;
+    if (file != null) {
+      switch (type) {
+        case 'logo':
+          logoImage.value = file;
+          break;
+        case 'fssai':
+          fssaiImage.value = file;
+          break;
+        case 'nutrition':
+          nutritionImage.value = file;
+          break;
+        case 'ingredients':
+          ingredientsImage.value = file;
+          break;
+      }
+    }
   }
 
   Future<File?> _pickImage(ImageSource source) async {
@@ -71,12 +82,11 @@ class ScanController extends GetxController {
     }
   }
 
-  // Analyze both images
   Future<void> analyzeProduct() async {
     if (!canAnalyze) {
       Get.snackbar(
         'Missing Images',
-        'Please add both front and back photos',
+        'Please add all 4 photos',
         backgroundColor: const Color(0xFFF39C12),
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,
@@ -88,7 +98,6 @@ class ScanController extends GetxController {
       isLoading.value = true;
 
       Get.dialog(
-        // ignore: deprecated_member_use
         WillPopScope(
           onWillPop: () async => false,
           child: const Center(child: _ProcessingDialog()),
@@ -96,12 +105,11 @@ class ScanController extends GetxController {
         barrierDismissible: false,
       );
 
-      // Send BOTH images to backend
-      // Front → brand/logo detection
-      // Back → FSSAI + nutrition extraction
       final result = await _apiService.scanProduct(
-        frontImage: frontImage.value!,
-        backImage: backImage.value!,
+        logoImage: logoImage.value!,
+        fssaiImage: fssaiImage.value!,
+        nutritionImage: nutritionImage.value!,
+        ingredientsImage: ingredientsImage.value!,
       );
 
       Get.back();
@@ -110,7 +118,7 @@ class ScanController extends GetxController {
         Get.toNamed(
           AppRoutes.result,
           arguments: {
-            'imagePath': backImage.value!.path,
+            'imagePath': nutritionImage.value!.path,
             'apiResult': result,
           },
         );
@@ -138,12 +146,14 @@ class ScanController extends GetxController {
   }
 
   void clearImages() {
-    frontImage.value = null;
-    backImage.value = null;
+    logoImage.value = null;
+    fssaiImage.value = null;
+    nutritionImage.value = null;
+    ingredientsImage.value = null;
   }
 }
 
-// Keep the _ProcessingDialog class exactly as it was before
+// Keep _ProcessingDialog same as before
 class _ProcessingDialog extends StatefulWidget {
   const _ProcessingDialog();
 
@@ -158,10 +168,10 @@ class _ProcessingDialogState extends State<_ProcessingDialog>
   int _stepIndex = 0;
 
   final List<String> _steps = [
-    'Reading product label...',
+    'Reading product labels...',
     'Verifying FSSAI number...',
-    'Checking brand authenticity...',
     'Analyzing nutrition data...',
+    'Checking ingredients...',
   ];
 
   @override
